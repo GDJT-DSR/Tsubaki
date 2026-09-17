@@ -26,6 +26,14 @@ template <typename T> class LockFreeQueue {
     LockFreeQueue(const LockFreeQueue &) = delete;
     LockFreeQueue &operator=(const LockFreeQueue &) = delete;
 
+    // 返回不小于 n 的最小 2 的幂，便于构造合法容量。
+    static std::size_t roundCapacity(std::size_t n) {
+        std::size_t capacity = 1;
+        while (capacity < n)
+            capacity <<= 1;
+        return capacity;
+    }
+
     // 入队。仅在成功时移动 value；队列已满时返回 false 且 value 保持不变。
     bool try_push(T &&value) {
         std::size_t pos = m_enqueue.load(std::memory_order_relaxed);

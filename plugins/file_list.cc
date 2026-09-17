@@ -1,13 +1,13 @@
 #include "file_list.h"
 #include "logger.h"
-#include <algorithm>
+#include "thread_pool.h"
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
+#include <future>
 #include <string>
 #include <string_view>
 #include <system_error>
-#include <thread>
 #include <vector>
 
 using namespace plugins;
@@ -44,30 +44,30 @@ void FileList::initSizes() {
     if (pending.empty())
         return;
 
-    const size_t count = pending.size();
+    const std::size_t count = pending.size();
     std::vector<uintmax_t> sizes(count);
     std::vector<std::error_code> errors(count);
 
-    const size_t threads = std::max(1u, std::thread::hardware_concurrency());
-    const size_t chunk = (count + threads - 1) / threads;
+    // 通过线程池并行获取文件大小，避免逐个阻塞。
+    auto &pool = ThreadPool::GetInstance();
+    pool.initAndStart();
 
-    std::vector<std::thread> workers;
-    workers.reserve(threads);
-    for (size_t t = 0; t < threads; ++t) {
-        const size_t begin = t * chunk;
-        if (begin >= count)
-            break;
-        const size_t end = std::min(count, begin + chunk);
-        workers.emplace_back([&, begin, end] {
-            for (size_t i = begin; i < end; ++i) {
-                sizes[i] = std::filesystem::file_size(*pending[i], errors[i]);
-            }
-        });
+    std::vector<std::future<void>> futures;
+    futures.reserve(count);
+    for (std::size_t i = 0; i < count; ++i) {
+        futures.push_back(pool.submit([&, i] {
+            sizes[i] = std::filesystem::file_size(*pending[i], errors[i]);
+        }));
     }
-    for (auto &worker : workers)
-        worker.join();
+    for (auto &fut : futures) {
+        try {
+            fut.get();
+        } catch (...) {
+            // 具体错误已写入 errors，这里吞掉线程池相关异常。
+        }
+    }
 
-    for (size_t i = 0; i < count; ++i) {
+    for (std::size_t i = 0; i < count; ++i) {
         if (errors[i]) {
             logger(LogLevel::WARN, "Get size of file {} error. Skipped.",
                    *pending[i]);

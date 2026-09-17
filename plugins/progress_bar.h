@@ -24,6 +24,10 @@ class ProgressBar {
     // 探测失败（例如非 TTY）时返回 false。
     static bool terminalIsWideEnough();
 
+    // 进度条是否启用。禁用时 update/clear/finish 均为空操作，
+    // 调用方可据此跳过 detail 的格式化开销。
+    bool enabled() const noexcept { return m_enabled; }
+
   private:
     std::size_t m_total;
     std::ostream &m_os;

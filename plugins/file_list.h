@@ -3,7 +3,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <future>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -19,7 +18,6 @@ class FileList {
     struct FileInfo {
         uintmax_t size = unknown_size;
         std::string hash;
-        std::future<std::string> fut;
     };
 
     using filesum_t = std::unordered_map<std::string, FileInfo>;

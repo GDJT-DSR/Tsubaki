@@ -4,6 +4,7 @@
 #include "logger.h"
 #include "platform.h"
 #include "sum/sum.h"
+#include <iostream>
 #include <string_view>
 
 namespace {
@@ -24,6 +25,8 @@ std::string_view findHelpTopic(int argc, char *argv[]) {
 } // namespace
 
 int main(int argc, char *argv[]) {
+    // 不混用 C stdio：关闭同步可显著提升逐行输出的吞吐。
+    std::ios::sync_with_stdio(false);
     plugins::platform::enableUtf8Console();
     plugins::ArgParser &parser = plugins::ArgParser::GetInstance();
     const auto &logger = plugins::Logger::GetInstance();
