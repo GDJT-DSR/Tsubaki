@@ -14,7 +14,8 @@ A command-line checksum utility for file integrity verification, written in mode
   checksum list on stdin, or a plain path list on stdin.
 - **Filtering** – Exclude path prefixes and filter by minimum/maximum file size.
 - **Multi-threading** – Hash files in parallel with a thread pool sized to the
-  hardware; read buffers are sized dynamically per file.
+  hardware; tasks are dispatched through a lock-free queue, and read buffers
+  are sized dynamically per file.
 - **Resumable** – Already-computed hashes from the input list are reused unless
   `--force-scan` is given, so an interrupted run can be resumed.
 - **Progress bar** – Shows live progress on stderr when it is a terminal,
@@ -220,8 +221,9 @@ plugins/
   arg_parser.*   Command-line parsing
   encoder.*      OpenSSL digest lookup and file hashing
   file_list.*    File metadata container
+  lock_free_queue.h  Bounded lock-free MPMC queue (Vyukov)
   logger.*       Leveled logger
-  thread_pool.*  Worker pool used for hashing
+  thread_pool.*  Worker pool used for hashing, backed by the lock-free queue
   trie.*         Path-prefix matcher used by --exclude
 tests/      GoogleTest suite
 ```

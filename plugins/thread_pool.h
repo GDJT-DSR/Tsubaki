@@ -1,15 +1,13 @@
 #ifndef _PLUGIN_THREAD_POOL_H_
 #define _PLUGIN_THREAD_POOL_H_
 
+#include "lock_free_queue.h"
 #include "plugin.h"
 #include <atomic>
-#include <condition_variable>
 #include <cstddef>
 #include <functional>
 #include <future>
 #include <memory>
-#include <mutex>
-#include <queue>
 #include <stdexcept>
 #include <thread>
 #include <type_traits>
@@ -25,13 +23,16 @@ concept VoidCallable = requires(F f) {
 
 class ThreadPool : public Plugin<ThreadPool> {
 
+    // 无锁队列容量，必须是 2 的幂。
+    static constexpr std::size_t kQueueCapacity = 1 << 14;
+
+    LockFreeQueue<std::function<void(void)>> m_tasks{kQueueCapacity};
     std::vector<std::thread> m_workers;
-    std::queue<std::function<void(void)>> m_tasks;
-    std::mutex m_lock;
-    std::condition_variable m_cv;
     std::atomic_bool m_stop{false};
     std::atomic_bool m_start{false};
-    std::size_t m_size;
+    std::size_t m_size = 0;
+    // 每次入队或停止都会自增，工作线程在队列为空时据此休眠与唤醒。
+    alignas(64) std::atomic<std::size_t> m_wakeups{0};
 
     void work();
 
@@ -61,16 +62,19 @@ class ThreadPool : public Plugin<ThreadPool> {
 
         std::future<T> fut = task->get_future();
 
-        {
-            std::lock_guard<std::mutex> l(m_lock);
-            if (m_stop)
-                throw std::runtime_error("ThreadPool is stopped");
-            m_tasks.push([task]() { (*task)(); });
-        }
-        m_cv.notify_one();
+        if (m_stop.load(std::memory_order_acquire))
+            throw std::runtime_error("ThreadPool is stopped");
+
+        std::function<void(void)> job = [task]() { (*task)(); };
+        // 队列满时让出 CPU，等待工作线程腾出空位。
+        while (!m_tasks.try_push(std::move(job)))
+            std::this_thread::yield();
+
+        m_wakeups.fetch_add(1, std::memory_order_release);
+        m_wakeups.notify_one();
         return fut;
     }
 };
 
 }; // namespace plugins
-#endif // !_PLUGIN_THREAD_POOL_H_
+#endif

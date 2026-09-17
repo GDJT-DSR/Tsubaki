@@ -200,8 +200,10 @@ int sum::invoke() {
     }
     logger(plugins::LogLevel::INFO, "-->SUM: Calculating checksums...");
 
-    // 使用线程池
+    // 使用线程池。必须在提交任务前启动工作线程：队列有界，
+    // 若线程池未启动，提交超过队列容量的任务会一直等待空位而死锁。
     auto &pool = plugins::ThreadPool::GetInstance();
+    pool.initAndStart();
 
     for (auto &[key, val] : list) {
         if (g_interrupted) {

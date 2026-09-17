@@ -16,6 +16,7 @@ add_executable(tsubaki_tests
     test_common.cc
     test_encoder.cc
     test_file_list.cc
+    test_lock_free_queue.cc
     test_progress_bar.cc
     test_trie.cc
 )
