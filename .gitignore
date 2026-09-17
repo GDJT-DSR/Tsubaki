@@ -1,2 +1,6 @@
 Tsubaki.Qt_creator.d/build
 Tsubaki.Qt_creator.d/.qtcreator
+
+.clangd*
+build
+compile_commands.json
