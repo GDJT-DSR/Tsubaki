@@ -8,6 +8,7 @@
 #include "plugins/thread_pool.h"
 #include "scan.h"
 #include "sum/filter.h"
+#include <charconv>
 #include <chrono>
 #include <csignal>
 #include <cstdint>
@@ -17,6 +18,7 @@
 #include <iostream>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -200,10 +202,38 @@ int sum::invoke() {
     }
     logger(plugins::LogLevel::INFO, "-->SUM: Calculating checksums...");
 
+    // 线程数：默认按硬件并发数，可用 --threads=N 覆盖。
+    unsigned threads = std::thread::hardware_concurrency();
+    if (const auto *values = parser.getValue("--threads");
+        values && !values->empty()) {
+        if (values->size() >= 2) {
+            logger(plugins::LogLevel::WARN,
+                   "More than 1 (received {}) values for --threads are "
+                   "provided. Only the first is used.",
+                   values->size());
+        }
+        const std::string_view text = values->front();
+        unsigned parsed = 0;
+        const auto [ptr, ec] =
+            std::from_chars(text.data(), text.data() + text.size(), parsed);
+        if (ec != std::errc{} || ptr != text.data() + text.size() ||
+            parsed == 0) {
+            logger(plugins::LogLevel::WARN,
+                   "Invalid value for --threads: '{}'. Using {} instead.", text,
+                   threads);
+        } else {
+            threads = parsed;
+        }
+    }
+    if (threads == 0)
+        threads = 1;
+    logger(plugins::LogLevel::INFO, "-->SUM: Using {} worker thread(s).",
+           threads);
+
     // 使用线程池。必须在提交任务前启动工作线程：队列有界，
     // 若线程池未启动，提交超过队列容量的任务会一直等待空位而死锁。
     auto &pool = plugins::ThreadPool::GetInstance();
-    pool.initAndStart();
+    pool.initAndStart(threads);
 
     for (auto &[key, val] : list) {
         if (g_interrupted) {

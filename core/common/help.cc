@@ -28,6 +28,7 @@ Options:
   --max-size=SIZE     Only include files not larger than SIZE
   --force-scan        Recompute hashes even if present in the input list
   --allow-symlinks    Follow directory symlinks while scanning
+  --threads=N         Number of worker threads (default: hardware concurrency)
   --test              Scan and report only; do not compute checksums
   --progress          Force the progress bar on (default: only on a TTY wide enough)
   --no-progress       Force the progress bar off
@@ -82,6 +83,7 @@ sum 的输入：
   --max-size=SIZE     仅包含不大于 SIZE 的文件
   --force-scan        即使输入列表中已有哈希也重新计算
   --allow-symlinks    扫描时跟随目录符号链接
+  --threads=N         工作线程数（默认：硬件并发数）
   --test              仅扫描与统计，不计算校验和
   --progress          强制显示进度条（默认仅在终端足够宽时显示）
   --no-progress       强制关闭进度条
@@ -311,6 +313,22 @@ directories are not descended into.
      R"(--allow-symlinks
 
 扫描目录时跟随目录符号链接。不设置时不会进入符号链接指向的目录。
+)"},
+    {"--threads",
+     R"(--threads=N
+
+Number of worker threads used to hash files. Defaults to the hardware
+concurrency reported by the system. The value must be a positive integer.
+
+Example:
+  tsubaki sum sha256 ./data --threads=8
+)",
+     R"(--threads=N
+
+用于计算哈希的工作线程数，默认为系统报告的硬件并发数。取值必须为正整数。
+
+示例：
+  tsubaki sum sha256 ./data --threads=8
 )"},
     {"--test",
      R"(--test

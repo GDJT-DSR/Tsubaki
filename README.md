@@ -125,6 +125,7 @@ tsubaki <command> [options] [paths...]
 | `--max-size=SIZE` | Only include files not larger than `SIZE` |
 | `--force-scan` | Recompute hashes even if present in the input list |
 | `--allow-symlinks` | Follow directory symlinks while scanning |
+| `--threads=N` | Number of worker threads (default: hardware concurrency) |
 | `--test` | Scan and report only; do not compute checksums |
 | `--progress` | Force the progress bar on |
 | `--no-progress` | Force the progress bar off |

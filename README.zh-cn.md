@@ -120,6 +120,7 @@ tsubaki <命令> [选项] [路径...]
 | `--max-size=SIZE` | 仅包含不大于 `SIZE` 的文件 |
 | `--force-scan` | 即使输入列表中已有哈希也重新计算 |
 | `--allow-symlinks` | 扫描时跟随目录符号链接 |
+| `--threads=N` | 工作线程数（默认：硬件并发数） |
 | `--test` | 仅扫描与统计，不计算校验和 |
 | `--progress` | 强制显示进度条 |
 | `--no-progress` | 强制关闭进度条 |
