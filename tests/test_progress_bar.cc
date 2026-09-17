@@ -18,6 +18,18 @@ TEST(ProgressBar, RendersProgressAndDetail) {
     EXPECT_NE(out.find("1.00 KiB / 2.00 KiB"), std::string::npos);
 }
 
+TEST(ProgressBar, CapsAtNinetyNineUntilFinished) {
+    std::ostringstream os;
+    plugins::ProgressBar bar(1000, os, true);
+
+    bar.update(999);
+    EXPECT_NE(os.str().find("99%"), std::string::npos);
+    EXPECT_EQ(os.str().find("100%"), std::string::npos);
+
+    bar.update(1000);
+    EXPECT_NE(os.str().find("100%"), std::string::npos);
+}
+
 TEST(ProgressBar, DisabledWritesNothing) {
     std::ostringstream os;
     plugins::ProgressBar bar(4, os, false);

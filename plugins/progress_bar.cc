@@ -29,8 +29,11 @@ void ProgressBar::update(std::size_t done, std::string_view detail) {
 }
 
 void ProgressBar::render(std::size_t done, std::string_view detail) {
-    const double ratio =
-        m_total == 0 ? 1.0 : static_cast<double>(done) / m_total;
+    const bool finished = done >= m_total;
+    double ratio = m_total == 0 ? 1.0 : static_cast<double>(done) / m_total;
+    // 尚未全部完成时最多显示 99%，只有真正结束才到 100%。
+    if (!finished)
+        ratio = std::min(ratio, 0.99);
     const std::size_t filled = static_cast<std::size_t>(ratio * kBarWidth);
 
     std::string bar;
