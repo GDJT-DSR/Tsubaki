@@ -2,6 +2,7 @@
 #define _PLUGIN_ENCODER_H_
 
 #include "plugin.h"
+#include <cstdint>
 #include <openssl/evp.h>
 #include <string>
 #include <string_view>
@@ -28,10 +29,8 @@ class Encoder : public Plugin<Encoder> {
 
   public:
     const EVP_MD *getMdByName(std::string_view name) const;
-    static std::string
-    encodeFile(std::string_view path, uintmax_t size, const EVP_MD *md,
-               std::string (*cb)(std::vector<unsigned char>) = &Encoder::toHex);
-    static std::string toHex(std::vector<unsigned char>);
+    static std::string encodeFile(std::string_view path, uintmax_t size,
+                                  const EVP_MD *md);
 };
 } // namespace plugins
 

@@ -1,58 +1,90 @@
 #include "file_list.h"
 #include "logger.h"
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <thread>
+#include <vector>
 
 using namespace plugins;
 
 bool FileList::add(std::string file) {
-    if (auto it = m_filesums.find(file); it != m_filesums.end()) {
+    auto [it, inserted] = m_filesums.try_emplace(std::move(file));
+    if (!inserted)
         return false;
-    }
-    m_filesums[file].hash = "<NONE>";
+    it->second.hash = "<NONE>";
+    return true;
+}
+
+bool FileList::add(std::string file, uintmax_t size) {
+    auto [it, inserted] = m_filesums.try_emplace(std::move(file));
+    if (!inserted)
+        return false;
+    it->second.hash = "<NONE>";
+    it->second.size = size;
     return true;
 }
 
 void FileList::set(std::string_view file, std::string_view hash) {
     m_filesums[std::string(file)].hash = hash;
 }
-std::optional<std::string_view> FileList::getHash(const std::string &file) {
-    auto it = m_filesums.find(file);
-    if (it == m_filesums.end()) {
-        return std::nullopt;
-    }
-    return it->second.hash;
-}
-// std::unordered_set<std::string_view>
-// FileList::getFilesByHash(const std::string &hash) {
-//     return m_file_by_sums[hash];
-// }
 
 void FileList::initSizes() {
     const auto &logger = Logger::GetInstance();
-    for (auto it = m_filesums.begin(); it != m_filesums.end();) {
-        std::error_code ec;
-        it->second.size = std::filesystem::file_size(it->first, ec);
-        if (ec) {
+
+    std::vector<const std::string *> pending;
+    for (const auto &[key, val] : m_filesums) {
+        if (val.size == unknown_size)
+            pending.push_back(&key);
+    }
+    if (pending.empty())
+        return;
+
+    const size_t count = pending.size();
+    std::vector<uintmax_t> sizes(count);
+    std::vector<std::error_code> errors(count);
+
+    const size_t threads = std::max(1u, std::thread::hardware_concurrency());
+    const size_t chunk = (count + threads - 1) / threads;
+
+    std::vector<std::thread> workers;
+    workers.reserve(threads);
+    for (size_t t = 0; t < threads; ++t) {
+        const size_t begin = t * chunk;
+        if (begin >= count)
+            break;
+        const size_t end = std::min(count, begin + chunk);
+        workers.emplace_back([&, begin, end] {
+            for (size_t i = begin; i < end; ++i) {
+                sizes[i] = std::filesystem::file_size(*pending[i], errors[i]);
+            }
+        });
+    }
+    for (auto &worker : workers)
+        worker.join();
+
+    for (size_t i = 0; i < count; ++i) {
+        if (errors[i]) {
             logger(LogLevel::WARN, "Get size of file {} error. Skipped.",
-                   it->first);
-            it = m_filesums.erase(it);
+                   *pending[i]);
+            m_filesums.erase(*pending[i]);
         } else {
-            ++it;
+            m_filesums[*pending[i]].size = sizes[i];
         }
     }
 }
-uintmax_t FileList::getTotalSize(bool b) {
+
+uintmax_t FileList::getTotalSize(bool skip_computed) {
     uintmax_t ret = 0;
-    const auto &logger = Logger::GetInstance();
     for (const auto &[key, val] : m_filesums) {
-        if (!b || val.hash.empty() || val.hash.front() == '<')
+        if (val.size == unknown_size)
+            continue;
+        if (!skip_computed || val.hash.empty() || val.hash.front() == '<')
             ret += val.size;
-        // logger(LogLevel::INFO, "{} {}", val.hash, val.size);
     }
     return ret;
 }

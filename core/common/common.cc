@@ -2,7 +2,9 @@
 #include "plugins/arg_parser.h"
 #include "plugins/logger.h"
 #include <csignal>
+#include <cstddef>
 #include <cstdlib>
+#include <string>
 #include <string_view>
 #include <sys/signal.h>
 
@@ -77,12 +79,12 @@ void common::loadFilesFromStream(plugins::FileList &fl, std::istream &is,
             return;
         }
         std::string_view view{tmp};
-        std::string_view hash = view.substr(pos, space_pos);
+        std::string_view hash = view.substr(pos, space_pos - pos);
         if (!checkIsValid(hash)) {
             logger(plugins::LogLevel::ERROR, "{} in line {}: invalid hex value",
                    name, line);
             return;
         }
-        fl.set(hash, view.substr(space_pos + 1));
+        fl.set(view.substr(space_pos + 1), hash);
     }
 }

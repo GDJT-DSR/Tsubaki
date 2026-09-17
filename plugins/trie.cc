@@ -16,7 +16,7 @@ void Trie::insert(std::string_view word) {
 bool Trie::match(std::string_view pattern) const {
     const TrieNode *cur = &m_root;
     for (char c : pattern) {
-        auto it = m_root.children.find(c);
+        auto it = cur->children.find(c);
         if (it == m_root.children.end()) {
             return false;
         }

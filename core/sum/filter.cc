@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <optional>
+#include <string>
 #include <string_view>
 #include <system_error>
 
@@ -50,6 +51,7 @@ std::optional<uintmax_t> parseSize(std::string_view key) {
     case 'K':
     case 'k':
         scale = 1ll << 10;
+        break;
     case 'm':
     case 'M':
         scale = 1ll << 20;
@@ -83,7 +85,7 @@ void sum::filter(plugins::FileList &fl) {
     const auto &logger = plugins::Logger::GetInstance();
     plugins::Trie trie;
     const auto *excs = parser.getValue("--exclude");
-    bool do_exc = excs && excs->empty();
+    bool do_exc = excs && !excs->empty();
     if (do_exc) {
         for (const auto &ex : *excs) {
             auto path = std::filesystem::absolute(ex).lexically_normal();
@@ -91,7 +93,6 @@ void sum::filter(plugins::FileList &fl) {
         }
     }
 
-    auto &file_map = *fl;
     uintmax_t max_size = UINTMAX_MAX;
     if (auto ret = parseSize("--max-size"); ret) {
         max_size = *ret;
@@ -101,10 +102,11 @@ void sum::filter(plugins::FileList &fl) {
         min_size = *ret;
     }
 
-    using val_t = plugins::FileList::filesum_t::value_type;
-    size_t size = file_map.size();
     fl.initSizes();
-    std::erase_if(file_map, [&](const val_t &item) {
+    const size_t size = fl.size();
+
+    using val_t = plugins::FileList::filesum_t::value_type;
+    fl.eraseIf([&](const val_t &item) {
         const auto &[key, val] = item;
         if (do_exc && trie.match(key)) {
             return true;
@@ -114,6 +116,6 @@ void sum::filter(plugins::FileList &fl) {
         }
         return false;
     });
-    size -= file_map.size();
-    logger(plugins::LogLevel::INFO, "-->SUM: Ignored {} files.", size);
+    logger(plugins::LogLevel::INFO, "-->SUM: Ignored {} files.",
+           size - fl.size());
 }

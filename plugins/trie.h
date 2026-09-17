@@ -9,7 +9,7 @@ namespace plugins {
 class Trie {
     struct TrieNode {
         std::unordered_map<char, std::unique_ptr<TrieNode>> children;
-        bool is_end;
+        bool is_end = false;
     };
     TrieNode m_root;
 

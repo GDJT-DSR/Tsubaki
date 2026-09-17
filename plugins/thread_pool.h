@@ -7,10 +7,12 @@
 #include <cstddef>
 #include <functional>
 #include <future>
+#include <memory>
 #include <mutex>
 #include <queue>
 #include <stdexcept>
 #include <thread>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -45,8 +47,11 @@ class ThreadPool : public Plugin<ThreadPool> {
 
     ~ThreadPool() { stop(); }
 
-    template <typename T> std::future<T> submit(std::function<T()> f) {
-        auto task = std::make_shared<std::packaged_task<T()>>(f);
+    template <typename F>
+    std::future<std::invoke_result_t<F>> submit(F &&f) {
+        using T = std::invoke_result_t<F>;
+        auto task =
+            std::make_shared<std::packaged_task<T()>>(std::forward<F>(f));
 
         std::future<T> fut = task->get_future();
 
@@ -56,7 +61,7 @@ class ThreadPool : public Plugin<ThreadPool> {
                 throw std::runtime_error("ThreadPool is stopped");
             m_tasks.push([task, this]() {
                 if (m_stop) {
-                    throw std::runtime_error("Thread stopped.");
+                    throw exceptions::POOL_STOPPED;
                 }
                 (*task)();
             });

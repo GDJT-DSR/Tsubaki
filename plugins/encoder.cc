@@ -1,12 +1,10 @@
 #include "encoder.h"
-#include <_stdio.h>
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <format>
 #include <openssl/evp.h>
 #include <stdexcept>
-#include <sys/_types/_off_t.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
@@ -35,6 +33,17 @@ size_t getBufferSize(off_t size) {
     }
 }
 
+std::string toHex(const std::vector<unsigned char> &digest) {
+    static const char *map = "0123456789abcdef";
+    std::string res;
+    res.reserve(digest.size() << 1);
+    for (unsigned char c : digest) {
+        res += map[c >> 4];
+        res += map[c & 15];
+    }
+    return res;
+}
+
 }; // namespace
 
 const EVP_MD *Encoder::getMdByName(std::string_view name) const {
@@ -43,10 +52,11 @@ const EVP_MD *Encoder::getMdByName(std::string_view name) const {
     }
     return nullptr;
 }
-std::string
-Encoder::encodeFile(std::string_view path, uintmax_t file_size,
-                    const EVP_MD *md,
-                    std::string (*parse)(std::vector<unsigned char>)) {
+std::string Encoder::encodeFile(std::string_view path, uintmax_t file_size,
+                                const EVP_MD *md) {
+    if (!md)
+        throw std::runtime_error("Sum: null digest algorithm.");
+
     // 获取文件
     FILE *fp = std::fopen(path.data(), "rb");
     if (!fp)
@@ -83,16 +93,5 @@ Encoder::encodeFile(std::string_view path, uintmax_t file_size,
 
     EVP_MD_CTX_free(ctx);
     digest.resize(len);
-    return parse(std::move(digest));
-}
-
-std::string Encoder::toHex(std::vector<unsigned char> digest) {
-    static const char *map = "0123456789abcdef";
-    std::string res;
-    res.reserve(digest.size() << 1);
-    for (unsigned char c : digest) {
-        res += (map[c >> 4]);
-        res += (map[c & 15]);
-    }
-    return res;
+    return toHex(digest);
 }

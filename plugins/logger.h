@@ -2,9 +2,11 @@
 #define _PLUGINS_LOGGER_H_
 
 #include "plugin.h"
+#include <cstddef>
 #include <format>
 #include <string>
 #include <string_view>
+#include <utility>
 
 namespace plugins {
 
@@ -44,7 +46,7 @@ class Logger : public Plugin<Logger> {
     template <typename... Args>
     void operator()(LogLevel level, std::format_string<Args...> s,
                     Args &&...args) const {
-        if (level > m_min_level || level == LogLevel::NONE)
+        if (level < m_min_level || level == LogLevel::NONE)
             return;
         this->add(level, std::format(s, std::forward<Args>(args)...));
     }

@@ -3,6 +3,6 @@
 
 namespace sum {
 
-void invoke();
+int invoke();
 }
 #endif // !_SRC_SUM_SUM_H_

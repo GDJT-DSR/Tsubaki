@@ -1,6 +1,7 @@
 #ifndef _PLUGINS_ARG_PARSER_H_
 #define _PLUGINS_ARG_PARSER_H_
 #include "plugin.h"
+#include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>

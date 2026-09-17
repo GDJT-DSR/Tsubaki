@@ -1,5 +1,6 @@
 #include "arg_parser.h"
 #include <sstream>
+#include <string>
 
 namespace plugins {
 
@@ -14,7 +15,7 @@ void ArgParser::parse(int argc, char **argv) {
         if (sv.starts_with('-')) {
             const auto pos = sv.find('=');
             if (pos == std::string_view::npos) {
-                options[sv];
+                options.try_emplace(sv);
             } else {
                 const std::string_view key = sv.substr(0, pos);
                 const std::string_view val = sv.substr(pos + 1);

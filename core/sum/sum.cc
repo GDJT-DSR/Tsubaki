@@ -9,8 +9,9 @@
 #include <chrono>
 #include <csignal>
 #include <cstdint>
-#include <cstring>
+#include <format>
 #include <iostream>
+#include <string>
 #include <string_view>
 #include <sys/signal.h>
 #include <sys/types.h>
@@ -18,21 +19,20 @@
 #include <vector>
 namespace {
 std::string formatFileSize(uintmax_t bytes) {
-    static const char *units = " KMGTPE";
-    const int unitCount = strlen(units) / sizeof(units[0]);
+    static constexpr const char *units[] = {"B",   "KiB", "MiB", "GiB",
+                                            "TiB", "PiB", "EiB"};
+    constexpr int unitCount = sizeof(units) / sizeof(units[0]);
 
-    if (bytes == 0) {
+    if (bytes == 0)
         return "0 B";
+
+    int unitIndex = 0;
+    double size = static_cast<double>(bytes);
+    while (size >= 1024.0 && unitIndex < unitCount - 1) {
+        size /= 1024.0;
+        ++unitIndex;
     }
-
-    int unitIndex = static_cast<int>(std::log2(bytes) / 10.0);
-    if (unitIndex >= unitCount) {
-        unitIndex = unitCount - 1;
-    }
-
-    double size = static_cast<double>(bytes) / std::pow(1024.0, unitIndex);
-
-    return std::format("{:.2f} {}B", size, units[unitIndex]);
+    return std::format("{:.2f} {}", size, units[unitIndex]);
 }
 
 std::tuple<int, int> calc(plugins::ThreadPool &pool, plugins::FileList &fl,
@@ -40,15 +40,22 @@ std::tuple<int, int> calc(plugins::ThreadPool &pool, plugins::FileList &fl,
     int success = 0;
     int error = 0;
     pool.initAndStart();
-    for (auto &[key, val] : *fl) {
+    for (auto &[key, val] : fl) {
         if (!val.fut.valid()) {
+            if (!val.hash.empty() && val.hash.front() != '<') {
+                std::cout << val.hash << ' ' << key << '\n';
+                ++success;
+            } else {
+                std::cout << "<NONE> " << key << '\n';
+                ++error;
+            }
             continue;
         }
         try {
             auto hash = val.fut.get();
             std::cout << hash << ' ' << key << '\n';
             ++success;
-        } catch (plugins::ThreadPool::exceptions e) {
+        } catch (plugins::ThreadPool::exceptions) {
             std::cout << "<NONE> " << key << '\n';
         } catch (...) {
             logger(plugins::LogLevel::WARN,
@@ -69,29 +76,31 @@ void sig(int s) {
 
 } // namespace
 
-void sum::invoke() {
+int sum::invoke() {
     const auto &parser = plugins::ArgParser::GetInstance();
     const auto &encoder = plugins::Encoder::GetInstance();
     const auto &logger = plugins::Logger::GetInstance();
 
     const auto &commands = parser.getCommands();
 
-    if (commands.size() < 2) {
-        logger(plugins::LogLevel::ERROR, "At least 2 parameters needed.");
-        return;
+    if (commands.size() < 3) {
+        logger(plugins::LogLevel::ERROR, "At least 3 parameters needed.");
+        return 1;
     }
 
-    std::string_view sum_type = commands.front();
+    std::string_view sum_type = commands[1];
     const EVP_MD *md = encoder.getMdByName(sum_type);
     if (!md) {
-        logger(plugins::LogLevel::ERROR, "the sum type {} is not supported.",
+        logger(plugins::LogLevel::WARN,
+               "the sum type {} is not supported. All results will be recorded "
+               "as <NONE>.",
                sum_type);
     }
 
     logger(plugins::LogLevel::INFO, "===SUM [SCAN]===");
 
     plugins::FileList list;
-    for (auto it = commands.begin() + 1; it != commands.end(); ++it) {
+    for (auto it = commands.begin() + 2; it != commands.end(); ++it) {
         scan(*it, list);
     }
 
@@ -101,14 +110,14 @@ void sum::invoke() {
 
     sum::filter(list);
 
-    if (list->empty()) {
+    if (list.empty()) {
         logger(plugins::LogLevel::INFO,
                "==>SUM: No files matching the requirements were found. "
                "Calculation will not be started.");
-        return;
+        return md ? 0 : 1;
     }
     logger(plugins::LogLevel::INFO,
-           "-->SUM: Eventually {} regular files were loaded.", list->size());
+           "-->SUM: Eventually {} regular files were loaded.", list.size());
     logger(plugins::LogLevel::INFO, "");
     logger(plugins::LogLevel::INFO, "===SUM [CONFIG]===");
     logger(plugins::LogLevel::INFO, "");
@@ -125,21 +134,25 @@ void sum::invoke() {
     if (parser.getValue("--test")) {
         logger(plugins::LogLevel::INFO,
                "-->SUM: Calculation will not be started for argument: --test.");
+        return 0;
     }
     logger(plugins::LogLevel::INFO, "-->SUM: Calculating checksums...");
 
     // 使用线程池
     auto &pool = plugins::ThreadPool::GetInstance();
 
-    for (auto &[key, val] : *list) {
+    for (auto &[key, val] : list) {
+        if (!md) {
+            val.hash = "<NONE>";
+            continue;
+        }
         if (!val.hash.empty() && val.hash.front() != '<') {
             if (skip_if_computed) {
-                std::cout << val.hash << '\n';
                 continue;
             }
             val.hash.clear();
         }
-        val.fut = pool.submit<std::string>(
+        val.fut = pool.submit(
             [md, path = std::string_view(key), size = val.size]() {
                 return plugins::Encoder::encodeFile(path, size, md);
             });
@@ -161,8 +174,10 @@ void sum::invoke() {
                              "# Duration: {}\n"
                              "# Command: {}",
 
-                             list->size(), succeed, error,
-                             list->size() - succeed - error, start_time,
+                             list.size(), succeed, error,
+                             list.size() - succeed - error, start_time,
                              end_time, end_at - start_at, parser.getCommand())
               << std::endl;
+
+    return error > 0 ? 1 : 0;
 }
