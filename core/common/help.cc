@@ -28,6 +28,8 @@ Options:
   --force-scan        Recompute hashes even if present in the input list
   --allow-symlinks    Follow directory symlinks while scanning
   --test              Scan and report only; do not compute checksums
+  --progress          Force the progress bar on (default: only on a TTY wide enough)
+  --no-progress       Force the progress bar off
   --log-level=LEVEL   Log verbosity: DEBUG, INFO, WARN, ERROR (default: INFO)
   --quiet             Deprecated. Same as --log-level=ERROR
   -v                  Deprecated. Same as --log-level=INFO
@@ -77,6 +79,8 @@ sum 的输入：
   --force-scan        即使输入列表中已有哈希也重新计算
   --allow-symlinks    扫描时跟随目录符号链接
   --test              仅扫描与统计，不计算校验和
+  --progress          强制显示进度条（默认仅在终端足够宽时显示）
+  --no-progress       强制关闭进度条
   --log-level=LEVEL   日志级别：DEBUG、INFO、WARN、ERROR（默认 INFO）
   --quiet             已弃用，等价于 --log-level=ERROR
   -v                  已弃用，等价于 --log-level=INFO

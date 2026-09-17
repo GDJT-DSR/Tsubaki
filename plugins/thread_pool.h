@@ -50,8 +50,14 @@ class ThreadPool : public Plugin<ThreadPool> {
     template <typename F>
     std::future<std::invoke_result_t<F>> submit(F &&f) {
         using T = std::invoke_result_t<F>;
-        auto task =
-            std::make_shared<std::packaged_task<T()>>(std::forward<F>(f));
+        // 停止检查必须位于 packaged_task 内部，异常才会被存入 future，
+        // 否则会逃出工作线程并触发 std::terminate。
+        auto task = std::make_shared<std::packaged_task<T()>>(
+            [this, fn = std::forward<F>(f)]() mutable -> T {
+                if (m_stop)
+                    throw exceptions::POOL_STOPPED;
+                return std::invoke(fn);
+            });
 
         std::future<T> fut = task->get_future();
 
@@ -59,12 +65,7 @@ class ThreadPool : public Plugin<ThreadPool> {
             std::lock_guard<std::mutex> l(m_lock);
             if (m_stop)
                 throw std::runtime_error("ThreadPool is stopped");
-            m_tasks.push([task, this]() {
-                if (m_stop) {
-                    throw exceptions::POOL_STOPPED;
-                }
-                (*task)();
-            });
+            m_tasks.push([task]() { (*task)(); });
         }
         m_cv.notify_one();
         return fut;

@@ -1,9 +1,9 @@
 #include "logger.h"
+#include "platform.h"
 #include <cstdio>
 #include <format>
 #include <iostream>
 #include <ostream>
-#include <unistd.h>
 
 using namespace plugins;
 
@@ -51,7 +51,7 @@ LogLevel plugins::parseLevel(std::string_view level) {
     return LogLevel::NONE;
 }
 
-Logger::Logger() : m_color_enabled{isatty(fileno(stderr)) != 0} {}
+Logger::Logger() : m_color_enabled{platform::isTerminal(stderr)} {}
 
 void Logger::add(LogLevel level, const std::string &content) const {
     if (level < m_min_level)

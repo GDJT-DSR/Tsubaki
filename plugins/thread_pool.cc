@@ -18,7 +18,12 @@ void ThreadPool::work() {
         auto task = m_tasks.front();
         m_tasks.pop();
         ul.unlock();
-        task();
+        // 任务异常由 packaged_task 捕获并写入 future；此处兜底，
+        // 避免任何意外异常逃出线程函数导致 std::terminate。
+        try {
+            task();
+        } catch (...) {
+        }
     }
 }
 

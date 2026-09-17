@@ -5,14 +5,12 @@
 #include <format>
 #include <openssl/evp.h>
 #include <stdexcept>
-#include <sys/stat.h>
-#include <sys/types.h>
 
 using namespace plugins;
 
 namespace {
 
-size_t getBufferSize(off_t size) {
+size_t getBufferSize(uintmax_t size) {
 
     if (size < 0x400000) {
         if (size < 0x40000) {

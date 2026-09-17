@@ -14,6 +14,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(CMAKE_CXX_COMPILER_ID MATCHES "GNU|Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
+elseif(MSVC)
+    # 源码与帮助文本使用 UTF-8，MSVC 需要显式指定。
+    add_compile_options(/utf-8 /W4)
+    add_compile_definitions(NOMINMAX WIN32_LEAN_AND_MEAN)
 endif()
 
 option(TSUBAKI_SANITIZE "Build with AddressSanitizer/UBSan" OFF)

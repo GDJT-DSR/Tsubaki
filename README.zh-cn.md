@@ -16,14 +16,15 @@
   调整。
 - **可续算** – 除非指定 `--force-scan`，输入列表中已有的哈希会被直接复用，因此
   中断后的任务可以续算。
+- **进度条** – 当 stderr 为终端时显示实时进度，包含文件数量与已处理字节数。
 - **输出清晰** – 结果输出到 stdout，日志输出到 stderr，末尾附带汇总报告。
 
 ## 环境要求
 
-- 支持 C++20 的编译器（GCC 13+、Clang 16+ 或 Apple Clang 15+）
+- 支持 C++20 的编译器（GCC 13+、Clang 16+、Apple Clang 15+ 或 MSVC 19.29+）
 - CMake 3.16+
 - OpenSSL 开发库
-- Linux 或 macOS（POSIX）
+- Linux、macOS 或 Windows
 
 ## 构建
 
@@ -33,6 +34,13 @@ cmake --build build -j
 ```
 
 可执行文件位于 `build/tsubaki`。
+
+在 Windows 上配置时需指定 OpenSSL 安装路径，例如：
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DOPENSSL_ROOT_DIR=C:/OpenSSL-Win64
+cmake --build build --config Release
+```
 
 ### CMake 选项
 
@@ -79,6 +87,8 @@ tsubaki <命令> [选项] [路径...]
 | `--force-scan` | 即使输入列表中已有哈希也重新计算 |
 | `--allow-symlinks` | 扫描时跟随目录符号链接 |
 | `--test` | 仅扫描与统计，不计算校验和 |
+| `--progress` | 强制显示进度条 |
+| `--no-progress` | 强制关闭进度条 |
 | `--log-level=LEVEL` | `DEBUG`、`INFO`、`WARN` 或 `ERROR`（默认 `INFO`） |
 | `--quiet` | 已弃用，等价于 `--log-level=ERROR` |
 | `-v` | 已弃用，等价于 `--log-level=INFO` |
@@ -111,12 +121,19 @@ tsubaki <命令> [选项] [路径...]
 # Command: tsubaki sum sha256 ./data
 ```
 
+若运行过程中按 `Ctrl+C`（`SIGINT`）中断，报告仍会输出，并额外增加一行：
+
+```text
+# Interrupted: yes
+```
+
 ### 退出码
 
 | 退出码 | 含义 |
 | --- | --- |
 | `0` | 成功 |
 | `1` | 参数错误、算法不支持，或存在处理失败的文件 |
+| `130` | 被 `SIGINT`（`Ctrl+C`）中断 |
 
 ## 示例
 
@@ -173,7 +190,12 @@ tests/      GoogleTest 测试套件
 - 仅对普通文件计算校验和；除非指定 `--allow-symlinks`，否则不跟随目录符号链接。
 - 无法访问的子目录会被跳过并给出警告。
 - 输出中的路径会被规范化为绝对路径。
-- `SIGINT` 会优雅地停止线程池；已完成的哈希仍会输出，因此结果可用于续算。
+- `SIGINT`（`Ctrl+C`）会优雅地停止线程池；已完成的哈希仍会输出，汇总报告仍会打印
+  并附带 `# Interrupted: yes`，进程以退出码 `130` 结束，结果可用于续算。
+- 主线程等待单个文件的哈希最多 300ms；超时的文件会被暂存，待首轮遍历结束后再
+  回读，避免慢文件阻塞快文件的结果输出。
+- 进度条仅在 stderr 为终端、终端足够宽且日志级别不高于 `INFO` 时绘制；输出被
+  重定向、日志被静默或终端过窄（换行会破坏 `\r` 原地刷新）时自动禁用。
 - 文件列表在过滤前会完整载入内存，超大目录树会成为瓶颈。
 
 ## 许可证

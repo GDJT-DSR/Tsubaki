@@ -3,10 +3,28 @@
 #include "plugins/logger.h"
 #include <csignal>
 #include <cstddef>
+#include <cstdint>
 #include <cstdlib>
+#include <format>
 #include <string>
 #include <string_view>
-#include <sys/signal.h>
+
+std::string common::formatFileSize(uintmax_t bytes) {
+    static constexpr const char *units[] = {"B",   "KiB", "MiB", "GiB",
+                                            "TiB", "PiB", "EiB"};
+    constexpr int unitCount = sizeof(units) / sizeof(units[0]);
+
+    if (bytes == 0)
+        return "0 B";
+
+    int unitIndex = 0;
+    double size = static_cast<double>(bytes);
+    while (size >= 1024.0 && unitIndex < unitCount - 1) {
+        size /= 1024.0;
+        ++unitIndex;
+    }
+    return std::format("{:.2f} {}", size, units[unitIndex]);
+}
 
 void common::setLogLevel() {
 

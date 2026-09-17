@@ -2,10 +2,12 @@
 #include "common/common.h"
 #include "common/help.h"
 #include "logger.h"
+#include "platform.h"
 #include "sum/sum.h"
 #include <string_view>
 
 int main(int argc, char *argv[]) {
+    plugins::platform::enableUtf8Console();
     plugins::ArgParser &parser = plugins::ArgParser::GetInstance();
     const auto &logger = plugins::Logger::GetInstance();
     parser.parse(argc, argv);

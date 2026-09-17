@@ -17,15 +17,17 @@ A command-line checksum utility for file integrity verification, written in mode
   hardware; read buffers are sized dynamically per file.
 - **Resumable** – Already-computed hashes from the input list are reused unless
   `--force-scan` is given, so an interrupted run can be resumed.
+- **Progress bar** – Shows live progress on stderr when it is a terminal,
+  including file counts and processed bytes.
 - **Clean output** – Results go to stdout, logs to stderr, with a summary report
   appended at the end.
 
 ## Requirements
 
-- A C++20 compiler (GCC 13+, Clang 16+, or Apple Clang 15+)
+- A C++20 compiler (GCC 13+, Clang 16+, Apple Clang 15+, or MSVC 19.29+)
 - CMake 3.16+
 - OpenSSL development files
-- Linux or macOS (POSIX)
+- Linux, macOS, or Windows
 
 ## Build
 
@@ -35,6 +37,13 @@ cmake --build build -j
 ```
 
 The executable is produced at `build/tsubaki`.
+
+On Windows, configure with the OpenSSL install prefix, for example:
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DOPENSSL_ROOT_DIR=C:/OpenSSL-Win64
+cmake --build build --config Release
+```
 
 ### Options
 
@@ -81,6 +90,8 @@ tsubaki <command> [options] [paths...]
 | `--force-scan` | Recompute hashes even if present in the input list |
 | `--allow-symlinks` | Follow directory symlinks while scanning |
 | `--test` | Scan and report only; do not compute checksums |
+| `--progress` | Force the progress bar on |
+| `--no-progress` | Force the progress bar off |
 | `--log-level=LEVEL` | `DEBUG`, `INFO`, `WARN`, or `ERROR` (default `INFO`) |
 | `--quiet` | Deprecated. Same as `--log-level=ERROR` |
 | `-v` | Deprecated. Same as `--log-level=INFO` |
@@ -114,12 +125,20 @@ A summary report is appended at the end:
 # Command: tsubaki sum sha256 ./data
 ```
 
+If the run is interrupted with `Ctrl+C` (`SIGINT`), the report is still printed
+and an extra line is added:
+
+```text
+# Interrupted: yes
+```
+
 ### Exit status
 
 | Code | Meaning |
 | --- | --- |
 | `0` | Success |
 | `1` | Invalid arguments, unsupported algorithm, or one or more failed files |
+| `130` | Interrupted by `SIGINT` (`Ctrl+C`) |
 
 ## Examples
 
@@ -177,8 +196,16 @@ tests/      GoogleTest suite
   `--allow-symlinks` is set.
 - Subdirectories that cannot be accessed are skipped with a warning.
 - Paths are normalized to absolute paths in the output.
-- `SIGINT` stops the worker pool gracefully; files already hashed are still
-  printed, which makes the output suitable for resuming.
+- `SIGINT` (`Ctrl+C`) stops the worker pool gracefully. Files already hashed are
+  still printed, the summary report is still emitted with `# Interrupted: yes`,
+  and the process exits with code `130`; the output is suitable for resuming.
+- The main thread waits at most 300 ms for each file's hash; files that take
+  longer are deferred to a second pass after the first traversal, so slow files
+  do not block the results of faster ones.
+- The progress bar is drawn on stderr only when stderr is a terminal wide enough
+  to fit the whole line and the log level is `INFO` or lower; it is disabled
+  automatically when output is redirected, logging is quieted, or the terminal is
+  too narrow (wrapping would break the in-place `\r` refresh).
 - The file list is fully enumerated in memory before filtering, which is a
   bottleneck for very large trees.
 
