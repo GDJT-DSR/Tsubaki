@@ -1,6 +1,8 @@
 #include "arg_parser.h"
+#include "cmp/cmp.h"
 #include "common/common.h"
 #include "common/help.h"
+#include "dup/dup.h"
 #include "logger.h"
 #include "platform.h"
 #include "sum/sum.h"
@@ -69,6 +71,12 @@ int main(int argc, char *argv[]) {
     }
     if (command == "sum") {
         return sum::invoke();
+    }
+    if (command == "cmp") {
+        return cmp::invoke();
+    }
+    if (command == "dup") {
+        return duplicate::invoke();
     }
 
     logger(plugins::LogLevel::ERROR,

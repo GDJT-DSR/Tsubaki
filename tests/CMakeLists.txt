@@ -13,6 +13,7 @@ endif()
 
 add_executable(tsubaki_tests
     test_arg_parser.cc
+    test_cmp_dup.cc
     test_common.cc
     test_encoder.cc
     test_file_list.cc

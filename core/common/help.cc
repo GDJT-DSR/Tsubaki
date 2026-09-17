@@ -10,6 +10,8 @@ Usage:
 
 Commands:
   sum <algorithm> <path...>   Compute checksums for files and directories
+  cmp <fileA> <fileB>         Compare two checksum lists (A/B)
+  dup                         Find duplicate files from a checksum list on stdin
   help [key]                  Show this help; with a key, show its details
   help-cn [key]               Same as 'help' but in Chinese
 
@@ -55,6 +57,8 @@ Examples:
   tsubaki sum sha256 ./data --exclude=./data/.cache --min-size=1m
   cat partial.txt | tsubaki sum sha256 stdin
   printf 'a.txt\nb.txt\n' | tsubaki sum sha256 stdin-plain-list
+  tsubaki sum sha256 ./photos | tsubaki dup
+  tsubaki cmp A.txt B.txt
   tsubaki help --exclude
 )";
 
@@ -65,6 +69,8 @@ constexpr const char *kHelpCn = R"(Tsubaki - 用于文件完整性校验、比�
 
 命令：
   sum <算法> <路径...>    计算文件/目录的校验和
+  cmp <文件A> <文件B>     比较两个校验和列表（A/B）
+  dup                     从 stdin 的校验和列表查找重复文件
   help [键]               显示帮助；给出键时显示其详细信息
   help-cn [键]            同 help，但输出中文
 
@@ -110,6 +116,8 @@ SIZE 单位：b、k、m、g、t、p（二进制，1k = 1024）
   tsubaki sum sha256 ./data --exclude=./data/.cache --min-size=1m
   cat partial.txt | tsubaki sum sha256 stdin
   printf 'a.txt\nb.txt\n' | tsubaki sum sha256 stdin-plain-list
+  tsubaki sum sha256 ./photos | tsubaki dup
+  tsubaki cmp A.txt B.txt
   tsubaki help --exclude
 )";
 
@@ -175,6 +183,53 @@ Examples:
 示例：
   tsubaki help-cn
   tsubaki help-cn sum
+)"},
+    {"cmp",
+     R"(cmp <fileA> <fileB>
+
+Compare two tsubaki-format checksum lists (one entry per line: <hash> <path>)
+and report how they differ:
+
+  [!] Modified              Same path, different checksum
+  [D] Moved/copied/...      Same checksum under different paths
+  [U] Deleted or added      Present only in A ([U][A]) or only in B ([U][B])
+  [=] Matched               Same path and checksum
+
+The two files are usually produced by 'sum'. Results go to stdout.
+
+Example:
+  tsubaki cmp A.txt B.txt > comparison.txt
+)",
+     R"(cmp <文件A> <文件B>
+
+比较两个 tsubaki 格式的校验和列表（每行 "<哈希> <路径>"），并报告差异：
+
+  [!] Modified              路径相同但哈希不同
+  [D] Moved/copied/...      哈希相同但路径不同（移动/复制/重命名）
+  [U] Deleted or added      仅 A 有（[U][A]）或仅 B 有（[U][B]）
+  [=] Matched               路径与哈希都相同
+
+两个文件通常由 sum 生成，结果输出到 stdout。
+
+示例：
+  tsubaki cmp A.txt B.txt > comparison.txt
+)"},
+    {"dup",
+     R"(dup
+
+Read a tsubaki-format checksum list from stdin and group files that share the
+same checksum. Prints each duplicate group and a suggested 'rm' command.
+
+Example:
+  tsubaki sum sha256 ./photos | tsubaki dup
+)",
+     R"(dup
+
+从 stdin 读取 tsubaki 格式的校验和列表，把哈希相同的文件归为一组，输出每组
+重复文件以及一条建议的删除命令。
+
+示例：
+  tsubaki sum sha256 ./photos | tsubaki dup
 )"},
     {"stdin",
      R"(stdin

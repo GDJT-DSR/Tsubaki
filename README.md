@@ -96,11 +96,38 @@ tsubaki <command> [options] [paths...]
 | Command | Description |
 | --- | --- |
 | `sum <algorithm> <path...>` | Compute checksums for files and directories |
+| `cmp <fileA> <fileB>` | Compare two checksum lists and report differences |
+| `dup` | Find duplicate files from a checksum list on stdin |
 | `help [key]` | Show help in English; with `key`, show that topic's details |
 | `help-cn [key]` | Same as `help` but in Chinese |
 
 `key` may be a command, input, option, or algorithm, for example
 `tsubaki help sum`, `tsubaki help --exclude`, or `tsubaki help-cn stdin`.
+
+### Comparing and de-duplicating
+
+Both `cmp` and `dup` consume tsubaki-format checksum lists (one `<hash> <path>`
+entry per line), such as the output of `sum`.
+
+`dup` reads the list from stdin, groups entries that share a checksum, prints
+each group, and ends with a suggested `rm` command for the extra copies:
+
+```sh
+tsubaki sum sha256 ./photos | tsubaki dup
+```
+
+`cmp` takes two list files and reports:
+
+| Tag | Meaning |
+| --- | --- |
+| `[!]` | Modified: same path, different checksum |
+| `[D]` | Moved/copied/renamed: same checksum under different paths |
+| `[U][A]` / `[U][B]` | Deleted (only in A) / added (only in B) |
+| `[=]` | Matched: same path and checksum |
+
+```sh
+tsubaki cmp A.txt B.txt > comparison.txt
+```
 
 ### Inputs for `sum`
 
@@ -196,6 +223,10 @@ printf 'a.txt\nb.txt\n' | tsubaki sum sha256 stdin-plain-list
 # Inspect the scan/filter pipeline without hashing
 tsubaki sum sha256 ./data --test
 
+# Find duplicates, then compare two checksum lists
+tsubaki sum sha256 ./photos | tsubaki dup
+tsubaki cmp before.txt after.txt
+
 # Chinese help, or details about a single topic
 tsubaki help-cn
 tsubaki help --exclude
@@ -217,6 +248,8 @@ automatically by CMake if it is not installed.
 ```text
 core/
   common/   Argument-driven logging setup, checksum-list parsing, help text
+  cmp/      `cmp` command: compare two checksum lists
+  dup/      `dup` command: find duplicate files
   sum/      `sum` command: scanning, filtering and hash computation
 plugins/
   arg_parser.*   Command-line parsing

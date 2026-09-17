@@ -88,7 +88,9 @@ std::tuple<int, int, bool> calc(plugins::ThreadPool &pool,
         }
     };
 
-    // 提交阶段：边提交边取走已完成的结果，避免完成队列积压。
+    // 收集待计算的文件；已知哈希的直接输出。
+    std::vector<Completion> to_hash;
+    to_hash.reserve(fl.size());
     for (auto &[key, val] : fl) {
         if (g_interrupted) {
             interrupted = true;
@@ -106,8 +108,23 @@ std::tuple<int, int, bool> calc(plugins::ThreadPool &pool,
             }
             val.hash.clear();
         }
-        const std::string *key_ptr = &key;
-        plugins::FileList::FileInfo *val_ptr = &val;
+        to_hash.push_back({&key, &val});
+    }
+
+    // LPT 调度：大文件先提交，避免收尾时只剩少数线程在算大文件。
+    std::sort(to_hash.begin(), to_hash.end(),
+              [](const Completion &a, const Completion &b) {
+                  return a.val->size > b.val->size;
+              });
+
+    // 提交阶段：一次性提交，之后才收取结果。
+    for (const Completion &item : to_hash) {
+        if (g_interrupted) {
+            interrupted = true;
+            break;
+        }
+        const std::string *key_ptr = item.key;
+        plugins::FileList::FileInfo *val_ptr = item.val;
         if (pool.post([&, key_ptr, val_ptr, md] {
                 try {
                     val_ptr->hash = plugins::Encoder::encodeFile(
@@ -129,10 +146,10 @@ std::tuple<int, int, bool> calc(plugins::ThreadPool &pool,
             })) {
             ++pending;
         }
-        drain_ready();
     }
 
-    // 收尾阶段：等待剩余任务完成。
+    // 收尾阶段：提交完成后才开始收取结果并输出，避免输出拖慢任务提交、
+    // 导致工作线程无任务可做而空闲。
     std::size_t seen = wakeups.load(std::memory_order_acquire);
     while (pending > 0 && !g_interrupted) {
         drain_ready();

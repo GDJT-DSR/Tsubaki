@@ -17,7 +17,7 @@ bool Trie::match(std::string_view pattern) const {
     const TrieNode *cur = &m_root;
     for (char c : pattern) {
         auto it = cur->children.find(c);
-        if (it == m_root.children.end()) {
+        if (it == cur->children.end()) {
             return false;
         }
         cur = it->second.get();

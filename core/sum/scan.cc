@@ -15,7 +15,12 @@ namespace {
 
 void scanFile(std::string_view path, plugins::FileList &fl) {
     std::error_code ec;
-    fs::path abs = fs::absolute(path, ec).lexically_normal();
+    // 与目录扫描保持一致，解析符号链接，便于 --exclude 前缀匹配。
+    fs::path abs = fs::weakly_canonical(path, ec);
+    if (ec) {
+        ec.clear();
+        abs = fs::absolute(path, ec).lexically_normal();
+    }
     if (ec) {
         plugins::Logger::GetInstance()(plugins::LogLevel::WARN, "SUM: {} is not accessible.",
                               path);

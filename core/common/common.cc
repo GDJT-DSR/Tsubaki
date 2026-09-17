@@ -106,3 +106,43 @@ void common::loadFilesFromStream(plugins::FileList &fl, std::istream &is,
         fl.set(view.substr(space_pos + 1), hash);
     }
 }
+
+void common::loadChecksumEntries(std::istream &is, std::string_view source,
+                                 std::vector<ChecksumEntry> &out,
+                                 std::vector<std::string> &errors) {
+    std::string line;
+    std::size_t line_no = 0;
+    while (std::getline(is, line)) {
+        ++line_no;
+        const auto begin = line.find_first_not_of(" \t\r\f\v");
+        if (begin == std::string::npos || line[begin] == '#' ||
+            line[begin] == '[')
+            continue;
+        const auto end = line.find_last_not_of(" \t\r\f\v");
+        const std::string_view view{line.data() + begin, end - begin + 1};
+
+        const auto space = view.find_first_of(" \t");
+        if (space == std::string_view::npos) {
+            errors.push_back(std::format(
+                "{}: In line {}: a directory must follow the checksum.", source,
+                line_no));
+            continue;
+        }
+        const std::string_view hash = view.substr(0, space);
+        if (!checkIsValid(hash)) {
+            errors.push_back(std::format(
+                "{}: In line {}: '{}' is not a checksum.", source, line_no,
+                hash));
+            continue;
+        }
+        const auto path_begin = view.find_first_not_of(" \t", space);
+        if (path_begin == std::string_view::npos) {
+            errors.push_back(std::format(
+                "{}: In line {}: a directory must follow the checksum.", source,
+                line_no));
+            continue;
+        }
+        out.push_back({std::string(hash), std::string(view.substr(path_begin)),
+                       0});
+    }
+}

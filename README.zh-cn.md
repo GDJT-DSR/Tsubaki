@@ -91,11 +91,38 @@ tsubaki <命令> [选项] [路径...]
 | 命令 | 说明 |
 | --- | --- |
 | `sum <算法> <路径...>` | 计算文件与目录的校验和 |
+| `cmp <文件A> <文件B>` | 比较两个校验和列表并报告差异 |
+| `dup` | 从 stdin 的校验和列表查找重复文件 |
 | `help [键]` | 显示英文帮助；给出 `键` 时显示该主题的详细信息 |
 | `help-cn [键]` | 同 `help`，但输出中文 |
 
 `键` 可以是命令、输入、选项或算法，例如 `tsubaki help sum`、
 `tsubaki help --exclude`、`tsubaki help-cn stdin`。
+
+### 比较与去重
+
+`cmp` 与 `dup` 都消费 tsubaki 格式的校验和列表（每行一条 `<哈希> <路径>`），
+例如 `sum` 的输出。
+
+`dup` 从 stdin 读取列表，把哈希相同的记录分组输出，并在末尾给出一条建议的
+`rm` 命令用于删除多余副本：
+
+```sh
+tsubaki sum sha256 ./photos | tsubaki dup
+```
+
+`cmp` 接收两个列表文件并报告：
+
+| 标记 | 含义 |
+| --- | --- |
+| `[!]` | Modified：路径相同但哈希不同 |
+| `[D]` | Moved/copied/renamed：哈希相同但路径不同 |
+| `[U][A]` / `[U][B]` | 仅 A 有（删除）/ 仅 B 有（新增） |
+| `[=]` | Matched：路径与哈希都相同 |
+
+```sh
+tsubaki cmp A.txt B.txt > comparison.txt
+```
 
 ### `sum` 的输入
 
@@ -189,6 +216,10 @@ printf 'a.txt\nb.txt\n' | tsubaki sum sha256 stdin-plain-list
 # 只查看扫描/过滤结果，不计算哈希
 tsubaki sum sha256 ./data --test
 
+# 查找重复文件，以及比较两个校验和列表
+tsubaki sum sha256 ./photos | tsubaki dup
+tsubaki cmp before.txt after.txt
+
 # 中文帮助，或查看单个主题的详细信息
 tsubaki help-cn
 tsubaki help --exclude
@@ -210,6 +241,8 @@ ctest --test-dir build --output-on-failure
 ```text
 core/
   common/   日志级别配置、校验和列表解析、帮助文本
+  cmp/      `cmp` 命令：比较两个校验和列表
+  dup/      `dup` 命令：查找重复文件
   sum/      `sum` 命令：扫描、过滤与哈希计算
 plugins/
   arg_parser.*   命令行解析

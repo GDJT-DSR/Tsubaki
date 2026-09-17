@@ -87,8 +87,15 @@ void sum::filter(plugins::FileList &fl) {
     const auto *excs = parser.getValue("--exclude");
     bool do_exc = excs && !excs->empty();
     if (do_exc) {
+        std::error_code exc_ec;
         for (const auto &ex : *excs) {
-            auto path = std::filesystem::absolute(ex).lexically_normal();
+            // 与扫描时一致地解析符号链接，否则在 /var -> /private/var
+            // 这类系统上绝对路径的 --exclude 永远匹配不上。
+            auto path = std::filesystem::weakly_canonical(ex, exc_ec);
+            if (exc_ec) {
+                exc_ec.clear();
+                path = std::filesystem::absolute(ex, exc_ec).lexically_normal();
+            }
             trie.insert(path.string());
         }
     }
