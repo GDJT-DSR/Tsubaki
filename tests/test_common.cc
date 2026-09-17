@@ -1,7 +1,10 @@
 #include "common/common.h"
+#include "common/help.h"
 #include "plugins/file_list.h"
 #include <gtest/gtest.h>
+#include <iostream>
 #include <sstream>
+#include <string>
 
 TEST(Common, FormatsFileSize) {
     EXPECT_EQ(common::formatFileSize(0), "0 B");
@@ -47,4 +50,19 @@ TEST(LoadFilesFromStream, RejectsLineWithoutPath) {
     plugins::FileList fl;
     common::loadFilesFromStream(fl, is, "test", "SUM");
     EXPECT_TRUE(fl.empty());
+}
+
+TEST(Help, PrintsKnownTopicAndRejectsUnknown) {
+    std::ostringstream os;
+    std::streambuf *old = std::cout.rdbuf(os.rdbuf());
+
+    EXPECT_TRUE(common::printHelpTopic("sum", false));
+    EXPECT_TRUE(common::printHelpTopic("--exclude", true));
+    EXPECT_FALSE(common::printHelpTopic("does-not-exist", false));
+
+    std::cout.rdbuf(old);
+
+    const std::string out = os.str();
+    EXPECT_NE(out.find("sum <algorithm>"), std::string::npos);
+    EXPECT_NE(out.find("--exclude"), std::string::npos);
 }

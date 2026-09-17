@@ -91,7 +91,11 @@ tsubaki <命令> [选项] [路径...]
 | 命令 | 说明 |
 | --- | --- |
 | `sum <算法> <路径...>` | 计算文件与目录的校验和 |
-| `help` | 显示帮助（英文） |
+| `help [键]` | 显示英文帮助；给出 `键` 时显示该主题的详细信息 |
+| `help-cn [键]` | 同 `help`，但输出中文 |
+
+`键` 可以是命令、输入、选项或算法，例如 `tsubaki help sum`、
+`tsubaki help --exclude`、`tsubaki help-cn stdin`。
 
 ### `sum` 的输入
 
@@ -122,8 +126,8 @@ tsubaki <命令> [选项] [路径...]
 | `--log-level=LEVEL` | `DEBUG`、`INFO`、`WARN` 或 `ERROR`（默认 `INFO`） |
 | `--quiet` | 已弃用，等价于 `--log-level=ERROR` |
 | `-v` | 已弃用，等价于 `--log-level=INFO` |
-| `-h`、`--help` | 显示英文帮助 |
-| `--help-cn` | 显示中文帮助 |
+| `-h`、`--help` | 显示英文总帮助 |
+| `--help-cn` | 显示中文总帮助 |
 
 `SIZE` 可带单位后缀：`b`、`k`、`m`、`g`、`t`、`p`（二进制，即 `1k` = 1024 字节）。
 
@@ -184,8 +188,9 @@ printf 'a.txt\nb.txt\n' | tsubaki sum sha256 stdin-plain-list
 # 只查看扫描/过滤结果，不计算哈希
 tsubaki sum sha256 ./data --test
 
-# 中文帮助
-tsubaki --help-cn
+# 中文帮助，或查看单个主题的详细信息
+tsubaki help-cn
+tsubaki help --exclude
 ```
 
 ## 测试

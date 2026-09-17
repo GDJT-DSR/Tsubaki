@@ -6,6 +6,23 @@
 #include "sum/sum.h"
 #include <string_view>
 
+namespace {
+
+// 在 argv 中查找 'help' / 'help-cn' 之后的主题键，支持 --key=value 写法。
+std::string_view findHelpTopic(int argc, char *argv[]) {
+    for (int i = 1; i + 1 < argc; ++i) {
+        const std::string_view cur{argv[i]};
+        if (cur != "help" && cur != "help-cn")
+            continue;
+        std::string_view next{argv[i + 1]};
+        const auto pos = next.find('=');
+        return pos == std::string_view::npos ? next : next.substr(0, pos);
+    }
+    return {};
+}
+
+} // namespace
+
 int main(int argc, char *argv[]) {
     plugins::platform::enableUtf8Console();
     plugins::ArgParser &parser = plugins::ArgParser::GetInstance();
@@ -31,8 +48,20 @@ int main(int argc, char *argv[]) {
     }
 
     const std::string_view command = commands.front();
-    if (command == "help") {
-        common::printHelp(false);
+    if (command == "help" || command == "help-cn") {
+        const bool chinese = command == "help-cn";
+        const std::string_view topic = findHelpTopic(argc, argv);
+        if (topic.empty()) {
+            common::printHelp(chinese);
+            return 0;
+        }
+        if (!common::printHelpTopic(topic, chinese)) {
+            logger(plugins::LogLevel::ERROR,
+                   "Unknown help topic '{}'. Run '{}' to list the available "
+                   "topics.",
+                   topic, chinese ? "tsubaki help-cn" : "tsubaki help");
+            return 1;
+        }
         return 0;
     }
     if (command == "sum") {

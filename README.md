@@ -95,7 +95,11 @@ tsubaki <command> [options] [paths...]
 | Command | Description |
 | --- | --- |
 | `sum <algorithm> <path...>` | Compute checksums for files and directories |
-| `help` | Show help (English) |
+| `help [key]` | Show help in English; with `key`, show that topic's details |
+| `help-cn [key]` | Same as `help` but in Chinese |
+
+`key` may be a command, input, option, or algorithm, for example
+`tsubaki help sum`, `tsubaki help --exclude`, or `tsubaki help-cn stdin`.
 
 ### Inputs for `sum`
 
@@ -126,8 +130,8 @@ tsubaki <command> [options] [paths...]
 | `--log-level=LEVEL` | `DEBUG`, `INFO`, `WARN`, or `ERROR` (default `INFO`) |
 | `--quiet` | Deprecated. Same as `--log-level=ERROR` |
 | `-v` | Deprecated. Same as `--log-level=INFO` |
-| `-h`, `--help` | Show help in English |
-| `--help-cn` | Show help in Chinese |
+| `-h`, `--help` | Show the general help in English |
+| `--help-cn` | Show the general help in Chinese |
 
 `SIZE` accepts an optional unit suffix: `b`, `k`, `m`, `g`, `t`, `p`
 (binary, so `1k` = 1024 bytes).
@@ -190,8 +194,9 @@ printf 'a.txt\nb.txt\n' | tsubaki sum sha256 stdin-plain-list
 # Inspect the scan/filter pipeline without hashing
 tsubaki sum sha256 ./data --test
 
-# Chinese help
-tsubaki --help-cn
+# Chinese help, or details about a single topic
+tsubaki help-cn
+tsubaki help --exclude
 ```
 
 ## Testing
