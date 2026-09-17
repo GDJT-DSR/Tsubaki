@@ -35,12 +35,42 @@ cmake --build build -j
 
 可执行文件位于 `build/tsubaki`。
 
-在 Windows 上配置时需指定 OpenSSL 安装路径，例如：
+### Windows 上的 OpenSSL
+
+本项目不附带 OpenSSL，需要先自行安装。任选下面一种方式，然后用 CMake 配置项目。
+
+**方式一：vcpkg（推荐）**
 
 ```sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DOPENSSL_ROOT_DIR=C:/OpenSSL-Win64
+git clone https://github.com/microsoft/vcpkg.git
+.\vcpkg\bootstrap-vcpkg.bat
+.\vcpkg\vcpkg install openssl:x64-windows
+
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake
 cmake --build build --config Release
 ```
+
+**方式二：预编译安装包**
+
+安装 Win64 OpenSSL 3.x（例如来自
+<https://slproweb.com/products/Win32OpenSSL.html>），然后指定安装路径：
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64"
+cmake --build build --config Release
+```
+
+**方式三：Chocolatey**
+
+```sh
+choco install openssl
+
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64"
+cmake --build build --config Release
+```
+
+运行时需要能访问 `libcrypto-3-x64.dll`：把 OpenSSL 的 `bin` 目录加入 `PATH`，或将该
+DLL 复制到 `tsubaki.exe` 同目录。
 
 ### CMake 选项
 

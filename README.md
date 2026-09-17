@@ -38,12 +38,43 @@ cmake --build build -j
 
 The executable is produced at `build/tsubaki`.
 
-On Windows, configure with the OpenSSL install prefix, for example:
+### OpenSSL on Windows
+
+OpenSSL is not bundled and must be installed first. Pick one of the options
+below, then configure the project with CMake.
+
+**Option 1 – vcpkg (recommended)**
 
 ```sh
-cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DOPENSSL_ROOT_DIR=C:/OpenSSL-Win64
+git clone https://github.com/microsoft/vcpkg.git
+.\vcpkg\bootstrap-vcpkg.bat
+.\vcpkg\vcpkg install openssl:x64-windows
+
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE=C:/path/to/vcpkg/scripts/buildsystems/vcpkg.cmake
 cmake --build build --config Release
 ```
+
+**Option 2 – prebuilt installer**
+
+Install a Win64 OpenSSL 3.x package (for example from
+<https://slproweb.com/products/Win32OpenSSL.html>), then point CMake at it:
+
+```sh
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64"
+cmake --build build --config Release
+```
+
+**Option 3 – Chocolatey**
+
+```sh
+choco install openssl
+
+cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DOPENSSL_ROOT_DIR="C:/Program Files/OpenSSL-Win64"
+cmake --build build --config Release
+```
+
+At runtime `libcrypto-3-x64.dll` must be reachable: add the OpenSSL `bin`
+directory to `PATH`, or copy the DLL next to `tsubaki.exe`.
 
 ### Options
 
